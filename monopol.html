@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Монополия 10x10 — с деньгами и случайными вопросами</title>
+  <style>
+    /* ...Стили из предыдущего ответа (с бренд-логотипами и фигурками) ... */
+    :root {
+      --p1: #ff5252;
+      --p2: #448aff;
+      --bg: #f7fafd;
+      --cellBg1: #ffe0b2;
+      --cellBg2: #b2dfdb;
+      --cellBrd: #e0e0e0;
+      --cellShadow: 0 2px 7px 0 #bbb7;
+      --cellSize: 40px;
+      --historyBg: #fcfaf5ea;
+      --diceFace: #fffde7;
+      --diceBorder: #d9b881;
+      --diceDot: #0c1b2d;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 0;
+    }
+    .topbar {
+      display: flex;
+      justify-content: center;
+      margin-top: 33px;
+      margin-bottom: 18px;
+      z-index: 2;
+      position: relative;
+    }
+    .button {
+      padding: 10px 26px;
+      font-size: 18px;
+      background: linear-gradient(90deg, #0fd850 0, #43e97b 100%);
+      color: #2b352b;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 2px 13px #c2e1c4;
+      letter-spacing: 0.3px;
+      transition: background 0.22s;
+    }
+    .button:disabled {
+      background: #dddddd;
+      color: #bdbdbd;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+    }
+    .board-area {
+      position: relative;
+      width: 400px;
+      height: 400px;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(10, var(--cellSize));
+      grid-template-rows: repeat(10, var(--cellSize));
+      background: #fffdfa;
+      border: 8px solid #2228;
+      width: 100%;
+      height: 100%;
+      box-shadow: 0 3px 18px #bcab7cab, 0 0 0 5px #e4dfc2;
+      position: relative;
+      user-select: none;
+    }
+    .cell {
+      border: 1.5px solid var(--cellBrd);
+      background: var(--cellBg1);
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      box-shadow: var(--cellShadow);
+      position: relative;
+      font-size: 13px;
+      color: #3a3b3f;
+      cursor: pointer;
+      overflow: visible;
+      transition: background 0.22s;
+    }
+    .cell:nth-child(even) {
+      background: var(--cellBg2);
+    }
+    .cell:hover {
+      background: #d1eeffbf;
+      z-index: 2;
+      box-shadow: 0 4px 16px #b3e0fd;
+    }
+    /* Отдельное выделение случайных полей «вопросов» */
+    .question-cell {
+      box-shadow: 0 0 12px 3px #ff98003b inset;
+      background: #fff3e0;
+    }
+    .cell img.brand {
+      position: absolute;
+      left: 6px;
+      bottom: 6px;
+      width: 27px;
+      height: 27px;
+      object-fit: contain;
+      z-index: 1;
+      background: rgba(255, 255, 255, 0.77);
+      border-radius: 7px;
+      box-shadow: 0 2px 9px #d6d6d6af;
+      border: 1px solid #e3e3e3;
+      transition: box-shadow 0.2s;
+    }
+    .cell .figure1,
+    .cell .figure2 {
+      display: block;
+      width: 20px;
+      height: 22px;
+      position: absolute;
+      left: 25px;
+      bottom: 7px;
+      z-index: 2;
+    }
+    .cell .figure2 {
+      left: 44px;
+    }
+    .figure1 svg {
+      filter: drop-shadow(0 2px 4px #c35);
+    }
+    .figure2 svg {
+      filter: drop-shadow(0 2px 4px #4698dd);
+    }
+    .big-history {
+      position: absolute;
+      left: 42px;
+      top: 42px;
+      width: 316px;
+      height: 316px;
+      z-index: 30;
+      background: var(--historyBg);
+      border-radius: 22px;
+      box-shadow: 0 2px 17px #e5e1b4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1.7px solid #cabd87;
+      padding: 12px 8px 12px 10px;
+      animation: fadein 0.97s;
+    }
+    @keyframes fadein {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    .bh-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 3px 0 12px 0;
+      color: #9a8e2a;
+      opacity: 0.78;
+    }
+    .bh-inner {
+      width: 99%;
+      flex: 1 1 0;
+      overflow-y: auto;
+      text-align: left;
+      font-size: 15.3px;
+      color: #1b1d0c;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin-bottom: 11px;
+    }
+    .center-info {
+      font-size: 17px;
+      margin-bottom: 12px;
+      font-weight: 500;
+      text-align: center;
+    }
+    .dice-holder {
+      height: 62px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 13px;
+      pointer-events: none;
+    }
+    .dice3d {
+      width: 54px;
+      height: 54px;
+      perspective: 300px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .dice-face {
+      width: 48px;
+      height: 48px;
+      background: var(--diceFace);
+      border: 2.5px solid var(--diceBorder);
+      border-radius: 12px;
+      display: grid;
+      grid-template: repeat(3, 1fr)/repeat(3, 1fr);
+      align-items: center;
+      justify-items: center;
+      margin: 0 auto;
+      box-shadow: 0 2px 14px #e7cea99c, inset 0 2px 5px #f4ecd6;
+      transition: box-shadow 0.3s;
+      position: relative;
+      gap: 0;
+      padding: 2px;
+      animation: dicepop 0.1s;
+    }
+    @keyframes dicepop {
+      0% {
+        box-shadow: 0 2px 24px #a2a2a249;
+      }
+      100% {
+        box-shadow: 0 2px 14px #e7cea99c, inset 0 2px 5px #f4ecd6;
+      }
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      background: var(--diceDot);
+      border-radius: 50%;
+      margin: 0;
+      display: inline-block;
+      grid-row: auto;
+      grid-column: auto;
+      box-shadow: 0 1px 1.5px #8a8a8a44;
+    }
+    .dice3d.rot {
+      animation: rot3d 0.61s cubic-bezier(0.72, -0.12, 0.32, 1.25);
+    }
+    @keyframes rot3d {
+      0% {
+        transform: rotate3d(0.3, 0.6, 0, 0deg) scale(1.4);
+      }
+      65% {
+        transform: rotate3d(1, 1, 1, 250deg) scale(0.92);
+      }
+      100% {
+        transform: rotate3d(0, 1, 1, 0deg) scale(1);
+      }
+    }
+    .bh-inner .p1 {
+      color: var(--p1);
+      font-weight: 700;
+    }
+    .bh-inner .p2 {
+      color: var(--p2);
+      font-weight: 700;
+    }
+    .bh-inner b {
+      font-weight: bold;
+    }
+    @media (max-width: 500px) {
+      .board-area {
+        width: 98vw;
+        height: 98vw;
+        min-width: 280px;
+        min-height: 280px;
+      }
+      .big-history {
+        left: 8vw;
+        top: 8vw;
+        width: 82vw;
+        height: 82vw;
+      }
+      .cell img.brand {
+        width: 19vw;
+        max-width: 27px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <button class="button" id="rollBtn">Бросить кубик</button>
+  </div>
+  <div class="container">
+    <div class="board-area">
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+  <script>
+    const cellCount = 36;
+    const players = [
+      { name: 'Игрок 1', position: 0, type: 'pawn', money: 1500 },
+      { name: 'Игрок 2', position: 0, type: 'hat', money: 1500 },
+    ];
+    let currentPlayer = 0;
+    let isRolling = false;
+    const history = [];
+    let lastDice = null;
+
+    // Задаём случайные поля с вопросами (5 полей), уникальные номера
+    const questionCells = generateRandomQuestions(5);
+
+    // Массив ссылок на логотипы брендов (пример)
+    const brandImages = [
+      "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/5/51/Google.png",
+      "https://upload.wikimedia.org/wikipedia/commons/0/02/Apple_Computer_Logo_rainbow.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/0/09/McDonalds-Golden-Arches.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/5/53/Pepsi_logo_2014.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/6/6e/Coca-Cola_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/6/6d/Samsung_wordmark.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/2/2c/Adidas_Logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/b/b6/Facebook_Logo_%282019%29.png",
+      "https://upload.wikimedia.org/wikipedia/commons/5/51/Google.png",
+      "https://upload.wikimedia.org/wikipedia/commons/9/96/Twitter_logo_bird.png",
+      "https://upload.wikimedia.org/wikipedia/commons/e/e8/Tesla_logo.png",
+      "https://upload.wikimedia.org/wikipedia/commons/b/bf/Nestle_wordmark.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/1/19/Amazon_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/5/51/Google.png",
+      "https://upload.wikimedia.org/wikipedia/commons/0/09/McDonalds-Golden-Arches.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/5/53/Pepsi_logo_2014.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/7/7e/Huawei_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/6/6e/Coca-Cola_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/5/51/Google.png",
+      "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/a/ad/Instagram_icon.png",
+      "https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/1/19/Amazon_logo.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg",
+      "https://upload.wikimedia.org/wikipedia/commons/e/e8/Tesla_logo.png",
+      "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg"
+    ];
+
+    function generateRandomQuestions(count) {
+      // Генерируем 'count' уникальных случайных чисел для клеток, кроме 0 где старт
+      const result = new Set();
+      while (result.size < count) {
+        let n = Math.floor(Math.random() * cellCount);
+        if (n !== 0) result.add(n);
+      }
+      return Array.from(result);
+    }
+
+    function renderBoard() {
+      const board = document.getElementById('board');
+      board.innerHTML = '';
+      for (let row = 1; row <= 10; row++) {
+        for (let col = 1; col <= 10; col++) {
+          let idx = null,
+            figHtml = '';
+          if (row === 1) idx = col - 1;
+          else if (col === 10 && row > 1 && row <= 10) idx = 9 + row - 1;
+          else if (row === 10 && col < 10) idx = 18 + (9 - col);
+          else if (col === 1 && row > 1 && row < 10) idx = 27 + (10 - row);
+
+          let brandImg = "";
+          if (idx !== null && idx < cellCount) {
+            const imgsrc = brandImages[idx % brandImages.length];
+            // Если поле — вопрос — выделяем классом и добавляем знак вопроса
+            const isQuestion = questionCells.includes(idx);
+            const questionMarkHtml = isQuestion ? `<div style="position:absolute; top:4px; left:4px; font-weight:bold; font-size:18px; color:#ff9800; text-shadow:0 0 6px #aa6100;">?</div>` : "";
+            const questionClass = isQuestion ? "question-cell" : "";
+
+            players.forEach((p, n) => {
+              if (p.position === idx) {
+                figHtml += n === 0 ? getPawn('figure1') : getHat('figure2');
+              }
+            });
+
+            board.insertAdjacentHTML(
+              'beforeend',
+              `<div class="cell ${questionClass}" style="grid-row:${row};grid-column:${col}; position: relative;">
+                ${brandImg = `<img src="${imgsrc}" class="brand" alt="brand">`}
+                ${questionMarkHtml}
+                ${figHtml}
+              </div>`
+            );
+          } else {
+            board.insertAdjacentHTML(
+              'beforeend',
+              `<div class="cell" style="grid-row:${row};grid-column:${col}"></div>`
+            );
+          }
+        }
+      }
+
+      let bh = document.querySelector('.big-history');
+      if (!bh) {
+        bh = document.createElement('div');
+        bh.className = 'big-history';
+        board.parentElement.appendChild(bh);
+      }
+      bh.innerHTML = `
+        <div class="center-info" id="info"></div>
+        <div class="bh-title">Ходы игроков</div>
+        <div class="bh-inner" id="historyBox"></div>
+        <div class="dice-holder" id="diceViz"></div>
+      `;
+
+      showInfo();
+      showHistory();
+      renderDice(lastDice, false);
+      document.getElementById('rollBtn').onclick = rollDice;
+      document.getElementById('rollBtn').disabled = isRolling;
+    }
+
+    function showInfo() {
+      document.getElementById('info').innerHTML = `
+        Ходит: <span style="color:${
+          currentPlayer === 0 ? 'var(--p1)' : 'var(--p2)'
+        }">${players[currentPlayer].name}</span><br>
+        <span class="p1">${players[0].name}: <b>${players[0].money}</b> $</span>,
+        <span class="p2">${players[1].name}: <b>${players[1].money}</b> $</span>
+      `;
+    }
+
+    function showHistory() {
+      const his = document.getElementById('historyBox');
+      if (!his) return;
+      if (history.length === 0) {
+        his.innerHTML = '<span style="color:#aaa;">Пока пусто</span>';
+      } else {
+        const view = history
+          .slice(-13)
+          .map((h) => `<div>${h}</div>`)
+          .join('');
+        his.innerHTML = view;
+        his.scrollTop = his.scrollHeight;
+      }
+    }
+
+    function diceDots(val) {
+      const positions = [
+        [1, 1],
+        [1, 2],
+        [1, 3],
+        [2, 1],
+        [2, 2],
+        [2, 3],
+        [3, 1],
+        [3, 2],
+        [3, 3],
+      ];
+      const show = Array(9).fill(false);
+      if (val === 1) show[4] = true;
+      if (val === 2) show[0] = show[8] = true;
+      if (val === 3) show[0] = show[4] = show[8] = true;
+      if (val === 4) show[0] = show[2] = show[6] = show[8] = true;
+      if (val === 5) show[0] = show[2] = show[4] = show[6] = show[8] = true;
+      if (val === 6) show[0] = show[2] = show[3] = show[5] = show[6] = show[8] = true;
+      return positions
+        .map(
+          (p, i) =>
+            `<span class="dot" style="grid-row:${p[0]};grid-column:${p[1]};${
+              show[i] ? '' : 'opacity:0;'
+            }"></span>`
+        )
+        .join('');
+    }
+
+    function renderDice(val, animate) {
+      lastDice = val;
+      const diceSpan = document.getElementById('diceViz');
+      if (!diceSpan) return;
+      const cur = val || Math.floor(Math.random() * 6) + 1;
+      diceSpan.innerHTML = `<div class="dice3d${animate ? ' rot' : ''}" style="transform:rotate3d(${Math.random().toFixed(
+        2
+      )},${Math.random().toFixed(2)},1,${Math.random() * 120 - 60}deg);">
+        <div class="dice-face">${diceDots(cur)}</div>
+      </div>`;
+    }
+
+    function rollDice() {
+      if (isRolling) return;
+      isRolling = true;
+      document.getElementById('rollBtn').disabled = true;
+      let ticks = 18;
+      let lastVal = 1;
+      function animate() {
+        const val = Math.floor(Math.random() * 6) + 1;
+        lastVal = val;
+        renderDice(val, true);
+        if (ticks-- > 0) setTimeout(animate, 45 + ticks * 2.9);
+        else setTimeout(() => doMove(lastVal), 420);
+      }
+      animate();
+    }
+
+    function doMove(val) {
+      lastDice = val;
+      const p = players[currentPlayer];
+      const oldPosition = p.position;
+      let newPosition = oldPosition + val;
+      if (newPosition >= cellCount) {
+        newPosition -= cellCount;
+        // Можно по желанию добавить бонус за прохождение старта, например +200 денег (если хотите)
+        p.money += 200;
+        history.push(
+          `<span class="p${currentPlayer + 1}">${p.name}</span> прошёл(ла) старт и получил(а) <b>200</b> $`
+        );
+      }
+      p.position = newPosition;
+      renderDice(val, false);
+
+      // Проверяем событие на поле вопроса
+      if (questionCells.includes(newPosition)) {
+        applyQuestionEvent(p);
+      } else {
+        const moveMsg = `<span class="p${currentPlayer + 1}">${p.name}</span> бросил(а) <b>${val}</b>, перешёл(ла) с <b>${oldPosition}</b> на <b>${newPosition}</b>`;
+        history.push(moveMsg);
+      }
+
+      currentPlayer = (currentPlayer + 1) % players.length;
+      isRolling = false;
+      setTimeout(renderBoard, 350);
+    }
+
+    // Случайное событие: поощрение или наказание
+    function applyQuestionEvent(player) {
+      const reward = Math.floor(Math.random() * 201) + 100; // 100..300
+      const isBonus = Math.random() < 0.5;
+      if (isBonus) {
+        player.money += reward;
+        history.push(
+          `<span class="p${currentPlayer + 1}">${player.name}</span> ответил(а) правильно и получил(а) <b>+${reward} $</b>!`
+        );
+      } else {
+        player.money -= reward;
+        if (player.money < 0) player.money = 0;
+        history.push(
+          `<span class="p${currentPlayer + 1}">${player.name}</span> ошибся(лась) и получил(а) штраф <b>-${reward} $</b>.`
+        );
+      }
+    }
+
+    // SVG — фигурка "человечек"
+    function getPawn(cls) {
+      return `<span class="${cls}" title="Человечек">
+      <svg width="20" height="22" viewBox="0 0 20 22">
+        <ellipse cx="10" cy="8" rx="6.5" ry="7" fill="#ff5252"/>
+        <ellipse cx="10" cy="19" rx="7" ry="2.7" fill="#d33"/>
+        <ellipse cx="10" cy="8" rx="3.2" ry="3.5" fill="#fff" opacity=".12"/>
+        <circle cx="10" cy="5" r="2.1" fill="#fff8" />
+        <ellipse cx="10" cy="16.1" rx="3.4" ry="4.9" fill="#ff5252"/>
+      </svg></span>`;
+    }
+    // SVG — фигурка "шляпа"
+    function getHat(cls) {
+      return `<span class="${cls}" title="Шляпа">
+        <svg width="21" height="21" viewBox="0 0 21 21">
+          <ellipse cx="10.5" cy="16" rx="7.8" ry="2.6" fill="#1e3ad4"/>
+          <ellipse cx="10.5" cy="11.2" rx="5.4" ry="3.1" fill="#448aff"/>
+          <ellipse cx="10.5" cy="13.7" rx="5.4" ry="2.6" fill="#3461c7"/>
+          <rect x="5.1" y="11.2" width="10.8" height="4.5" rx="2.1" fill="#448aff" />
+          <ellipse cx="10.5" cy="13.7" rx="3.5" ry="1.2" fill="#8bb5fa"/>
+        </svg>
+      </span>`;
+    }
+
+    renderBoard();
+  </script>
+</body>
+</html>
